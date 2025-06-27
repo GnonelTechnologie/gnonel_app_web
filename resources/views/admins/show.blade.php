@@ -1,0 +1,1 @@
+C:\wamp\www\Gecole\resources/views/admins/show.blade.php
