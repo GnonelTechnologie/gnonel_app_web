@@ -22,6 +22,11 @@ Gnonel - Appels d'offres
 										@endforeach
 									</select>
                     	 </center>
+                    	 <div class="col-md-12 mt-3">
+                    	 	<center>
+                    	 		<input type="text" class="form-control" id="search-offre" placeholder="Rechercher un appel d'offres, une autorité ou une catégorie..." style="width: 50%">
+                    	 	</center>
+                    	 </div>
 						<table id="example" class="table table-bordered" style="width:100%;">
 							<thead>
 								<tr style="background-color:#1b87fa">
@@ -64,6 +69,107 @@ Gnonel - Appels d'offres
       $(document).ready(function () {
             
              var table = $('#example').DataTable(); 
+
+             // Autocomplétion pour les appels d'offres
+             $("#search-offre").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('autocomplete.offres') }}",
+                        dataType: "json",
+                        data: {
+                            term: request.term
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.value + ' - ' + item.raison_social + ' (' + item.nom_categorie + ')',
+                                    value: item.value,
+                                    id: item.id
+                                };
+                            }));
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    // Rediriger vers les détails de l'offre
+                    window.location.href = "{{ url('Details') }}/" + ui.item.id;
+                }
+             });
+
+             // Autocomplétion pour les opérateurs
+             $("#search-operateur").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('autocomplete.operateurs') }}",
+                        dataType: "json",
+                        data: {
+                            term: request.term
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.value + ' - ' + item.nom_pays,
+                                    value: item.value,
+                                    id: item.id
+                                };
+                            }));
+                        }
+                    });
+                },
+                minLength: 2
+             });
+
+             // Autocomplétion pour les autorités
+             $("#search-autorite").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('autocomplete.autorites') }}",
+                        dataType: "json",
+                        data: {
+                            term: request.term
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.value + ' - ' + item.nom_pays,
+                                    value: item.value,
+                                    id: item.id
+                                };
+                            }));
+                        }
+                    });
+                },
+                minLength: 2
+             });
+
+             // Autocomplétion pour les références
+             $("#search-reference").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('autocomplete.references') }}",
+                        dataType: "json",
+                        data: {
+                            term: request.term
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.value + ' - ' + item.raison_social,
+                                    value: item.value,
+                                    id: item.id
+                                };
+                            }));
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    // Rediriger vers les détails de la référence
+                    window.location.href = "{{ url('view/detailsreference') }}/" + ui.item.id;
+                }
+             });
+            
 $("#pays").on("change",function () {
 	$.ajax({
                 type: 'get',

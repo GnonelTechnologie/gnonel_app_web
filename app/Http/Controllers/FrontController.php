@@ -367,42 +367,60 @@ class FrontController extends Controller
   public function detailsreference($id)
   {
     $verif = User::verifabonnement(Auth::user());
-    //dd($verif);
+    
+    // Vérifier que l'utilisateur connecté a un abonnement valide
+    if ($verif == null || $verif->date_fin == null) {
+      return redirect(route('home'));
+    } elseif ($verif->date_fin < date('Y-m-d')) {
+      session()->flash('message', sprintf('Veuillez vous réabonner votre abonnement etait expiré le ' . Carbon::parse($verif->date_fin)->format('d/m/Y')));
+      return redirect(route('pricing'));
+    }
+
+    // Récupérer l'ID de l'opérateur qui a publié la référence
     $oper_id = DB::table('references')
       ->join('operateurs', 'operateurs.id', '=', 'references.operateur')
       ->where('references.idreference', $id)
       ->select('operateurs.id')
-      ->first()->id;
-    //dd($oper_id);
-    $user_ref = User::where('ratache_operateur', $oper_id)->first();
-    // ->join('users', 'users.ratache_operateur', '=', 'operateurs.id')
-
-    if ($verif->date_fin == null) {
-      return redirect(route('home'));
-      dd(1);
-    } elseif ($verif->date_fin < date('Y-m-d')) {
-      dd(2);
-      session()->flash('message', sprintf('Veuillez vous réabonner votre abonnement etait expiré le ' . Carbon::parse($verif->date_fin)->format('d/m/Y')));
-      return redirect(route('pricing'));
-    }
-    //dd($user_ref);
-    if ($user_ref == null) {
-      //dd(1);
-      return back()->with('add_ok', '');
-    }
-    if ($user_ref->date_fin == null) {
-      //dd(2);
-      return back()->with('add_ok', '');
-    } elseif ($user_ref->date_fin < date('Y-m-d')) {
-      //dd(3);
-      /*session()->flash('message', sprintf('Veuillez vous reabonner votre abonnement etait expiré le '.Carbon::parse($verif->date_fin)->format('d/m/Y')));
-       return redirect(route('pricing'));*/
-      return back()->with('add_ok', '');
+      ->first();
+    
+    if (!$oper_id) {
+      session()->flash('message', 'Référence introuvable.');
+      return redirect()->back();
     }
 
+    // Récupérer l'utilisateur qui a publié la référence
+    $user_ref = User::where('ratache_operateur', $oper_id->id)->first();
+
+    // Vérifier que la référence existe et est publiée
     $reference = DB::table('references')
       ->where('references.idreference', '=', $id)
+      ->where('references.status', '=', 1) // Seules les références publiées
       ->first();
+
+    if (!$reference) {
+      session()->flash('message', 'Référence introuvable ou non publiée.');
+      return redirect()->back();
+    }
+
+    // Pour les opérateurs économiques abonnés, permettre l'accès aux détails
+    // sans vérifier l'abonnement de l'utilisateur qui a publié la référence
+    if (Auth::user()->type_user == 3 && $verif != null && $verif->date_fin >= date('Y-m-d')) {
+      return view('detailsreference', compact('reference'));
+    }
+
+    // Pour les autres types d'utilisateurs, vérifier l'abonnement de l'utilisateur qui a publié
+    if ($user_ref == null) {
+      session()->flash('message', 'Utilisateur non trouvé.');
+      return redirect()->back();
+    }
+
+    if ($user_ref->date_fin == null) {
+      session()->flash('message', 'L\'utilisateur qui a publié cette référence n\'a pas d\'abonnement valide.');
+      return redirect()->back();
+    } elseif ($user_ref->date_fin < date('Y-m-d')) {
+      session()->flash('message', 'L\'abonnement de l\'utilisateur qui a publié cette référence a expiré.');
+      return redirect()->back();
+    }
 
     return view('detailsreference', compact('reference'));
   }
@@ -484,7 +502,13 @@ class FrontController extends Controller
 
   public function listspec()
   {
-    $specs = Spec::where('status', 1)->paginate(12);
+    // Vitrine publique : seules les spécifications publiées par l'admin sont visibles
+    $specs = Spec::where('specs.status', 1)
+                ->join('users', 'users.id', '=', 'specs.user_id')
+                ->where('users.role', 'admin')
+                ->select('specs.*')
+                ->paginate(12);
+                
     $pays = DB::table('pays')->orderby('nom_pays')->get();
     $categories = DB::table('categories')->orderby('code_categorie', 'asc')->get();
 
@@ -496,19 +520,26 @@ class FrontController extends Controller
 
     $specs = Spec::where('specs.status', 1);
 
-    if ($verif == null && Auth::user()->type_user == 3) {
-      $specs =  $specs->join('users', 'users.id', '=', 'specs.user_id')->where('users.role', 'admin');
+    // Vérification stricte pour les non-abonnés
+    if ($verif == null || $verif->date_fin < date('Y-m-d')) {
+      // Seuls les utilisateurs non-abonnés peuvent voir les spécifications de l'admin
+      if (Auth::user()->type_user == 3) {
+        $specs = $specs->join('users', 'users.id', '=', 'specs.user_id')
+                      ->where('users.role', 'admin')
+                      ->where('specs.status', 1);
+      } else {
+        // Redirection pour les autres types d'utilisateurs non-abonnés
+        session()->flash('message', 'Veuillez vous abonner pour accéder aux spécifications techniques.');
+        return redirect(route('pricing'));
+      }
     } else {
+      // Utilisateurs abonnés : accès à toutes les spécifications publiées
       if ($verif->date_fin == null) {
         return redirect(route('home'));
-      } elseif ($verif->date_fin < date('Y-m-d')) {
-        session()->flash('message', sprintf('Veuillez vous reabonner votre abonnement etait expiré le ' . Carbon::parse($verif->date_fin)->format('d/m/Y')));
-        return redirect(route('pricing'));
       }
     }
 
     $specs = $specs->paginate(12);
-
 
     $idpays = "";
     if (Auth::user()->ratache_operateur != null) {
@@ -517,6 +548,7 @@ class FrontController extends Controller
     if (Auth::user()->ratache_autorite != null) {
       $idpays = DB::table('autoritecontractantes')->where('id', Auth::user()->ratache_autorite)->first()->id_pays;
     }
+    
     if ($verif != null) {
       if ($verif->oper_local == 1 && $verif->oper_international == 1) {
         $pays = DB::table('pays')->orderby('nom_pays')->get();
@@ -527,9 +559,7 @@ class FrontController extends Controller
       $pays = DB::table('pays')->where('id', $idpays)->get();
     }
 
-
     $categories = DB::table('categories')->orderby('code_categorie', 'asc')->get();
-
 
     return view('spec_abonne', compact('specs', 'pays', 'categories'));
   }
@@ -646,5 +676,35 @@ class FrontController extends Controller
 
     // Write the HTML table to the PDF
 
+  }
+
+  /**
+   * Met à jour les informations du profil utilisateur connecté
+   */
+  public function updateProfil(Request $request)
+  {
+    $user = Auth::user();
+    $data = $request->validate([
+      'name' => 'required|string|max:255',
+      'prenom' => 'required|string|max:255',
+      'telephone' => 'required|string|max:30',
+      'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+      'structure' => 'nullable|string|max:255',
+    ]);
+
+    // Mise à jour des champs utilisateur
+    $user->name = $data['name'];
+    $user->prenom = $data['prenom'];
+    $user->telephone = $data['telephone'];
+    $user->email = $data['email'];
+    $user->save();
+
+    // Mise à jour de la structure si opérateur lié
+    if ($user->ratache_operateur) {
+      DB::table('operateurs')->where('id', $user->ratache_operateur)
+        ->update(['raison_social' => $data['structure']]);
+    }
+
+    return redirect()->back()->with('success', 'Profil mis à jour avec succès !');
   }
 }

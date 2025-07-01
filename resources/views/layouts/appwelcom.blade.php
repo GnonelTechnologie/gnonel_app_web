@@ -28,6 +28,10 @@
     <link rel="stylesheet" href="{{ asset('assets_recherche/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css">
     <link href="{{ asset('assets/css/plugins/chosen/chosen.css') }}" rel="stylesheet">
+    <!-- jQuery UI CSS pour l'autocomplétion -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <!-- CSS personnalisé pour l'autocomplétion -->
+    <link rel="stylesheet" href="{{ asset('css/autocomplete.css') }}">
 </head>
 
 <body>
@@ -71,14 +75,42 @@
                         </li>
                     @endif
                 @else
-                    <li class="nav-item">
-                        <a class="nav-link text-dark  dropdown-toggle" id="navbarDropdown" href="#" role="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">{{ Auth::user()->name }}</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link text-dark dropdown-toggle" id="navbarDropdown" href="#" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            {{ Auth::user()->name }}
+                            <span class="badge bg-info ms-2">
+                                @if(session('active_team_name'))
+                                    {{ session('active_team_name') }}
+                                @else
+                                    Espace personnel
+                                @endif
+                            </span>
+                        </a>
                         <ul class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
                             <li><a class="text-dark dropdown-item" href="{{ route('info_compte') }}">Mon Compte</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="dropdown-header">Changer d'espace</li>
+                            @php
+                                $teams = \App\Team::getUserTeams(Auth::id());
+                            @endphp
+                            <li>
+                                <a class="dropdown-item" href="{{ route('teams.personal') }}">
+                                    <i class="fas fa-user"></i> Espace personnel
+                                    @if(!session('active_team_id')) <span class="badge bg-success ms-2">Actif</span> @endif
+                                </a>
+                            </li>
+                            @foreach($teams as $team)
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('teams.switch', $team->id) }}">
+                                        <i class="fas fa-users"></i> {{ $team->team_name }}
+                                        @if(session('active_team_id') == $team->id) <span class="badge bg-success ms-2">Actif</span> @endif
+                                    </a>
+                                </li>
+                            @endforeach
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-dark" href="{{ route('logout') }}"
-                                    onclick="event.preventDefault();
-                                                document.getElementById('logout-form').submit();">
+                                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     <i class="fas fa-sign-out-alt"></i> Déconnexion
                                 </a>
 
@@ -115,6 +147,8 @@
     <!-- Core theme JS-->
     <script src="{{ asset('assets/assetclient/js/scripts.js') }}"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <!-- jQuery UI pour l'autocomplétion -->
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
     <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap5.min.js"></script>
     <script src="{{ asset('assets/js/plugins/chosen/chosen.jquery.js') }}"></script>

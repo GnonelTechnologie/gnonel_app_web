@@ -96,6 +96,34 @@
     <script type="text/javascript">
         $(document).ready(function() {
 
+            // Autocomplétion pour les références techniques
+            $("#reference").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('autocomplete.references') }}",
+                        dataType: "json",
+                        data: {
+                            term: request.term
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.value + ' - ' + item.raison_social,
+                                    value: item.value,
+                                    id: item.id
+                                };
+                            }));
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    // Remplir le champ avec la valeur sélectionnée
+                    $(this).val(ui.item.value);
+                    return false;
+                }
+            });
+
             window.searchReference = function(event) {
                 event.preventDefault();
                 $.ajax({

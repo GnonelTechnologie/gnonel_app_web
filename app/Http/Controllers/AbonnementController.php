@@ -355,8 +355,8 @@ class AbonnementController extends Controller
 
 
         if ($data['count'] > 5) {
-            $bonus += ($abn * 20) / 100;
-            $discountPack = (($abn * 20) / 100) * $data['count'];
+            $bonus += ($abn * 5) / 100;
+            $discountPack = (($abn * 5) / 100) * $data['count'];
         }
         //dd($data);
 

@@ -203,48 +203,41 @@ class SpecController extends Controller
     $categorie = $request->categorie;
     $recherche = $request->recherche;
 
+    // Base query : seules les spécifications publiées par l'admin avec statut 1
+    $baseQuery = DB::table('specs')
+      ->join('pays', 'pays.id', '=', 'specs.pays_id')
+      ->join('categories', 'categories.id', '=', 'specs.categorie_id')
+      ->join('users', 'users.id', '=', 'specs.user_id')
+      ->where('specs.status', 1)
+      ->where('users.role', 'admin')
+      ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays');
+
     $resultat = [];
+    
     if ($pays != '' && $categorie == '' && $recherche == '') {
-      $resultat = DB::table('specs')
-        ->join('pays', 'pays.id', '=', 'specs.pays_id')
-        ->join('categories', 'categories.id', '=', 'specs.categorie_id')
-        ->where('specs.pays_id', '=', $pays)
-        ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays')->orderby('specs.libelle', 'asc')->get();
+      $resultat = $baseQuery->where('specs.pays_id', '=', $pays)->orderby('specs.libelle', 'asc')->get();
     } elseif ($pays == '' && $categorie != '' && $recherche == '') {
-      $resultat = DB::table('specs')
-        ->join('pays', 'pays.id', '=', 'specs.pays_id')
-        ->join('categories', 'categories.id', '=', 'specs.categorie_id')
-        ->where('specs.categorie_id', '=', $categorie)
-        ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays')->orderby('specs.libelle', 'asc')->get();
+      $resultat = $baseQuery->where('specs.categorie_id', '=', $categorie)->orderby('specs.libelle', 'asc')->get();
     } elseif ($pays == '' && $categorie == '' && $recherche != '') {
-      $resultat = DB::table('specs')
-        ->join('pays', 'pays.id', '=', 'specs.pays_id')
-        ->join('categories', 'categories.id', '=', 'specs.categorie_id')
-        ->where('specs.libelle', 'like', '%' . $recherche . '%')
-        ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays')->orderby('specs.libelle', 'asc')->get();
+      $resultat = $baseQuery->where('specs.libelle', 'like', '%' . $recherche . '%')->orderby('specs.libelle', 'asc')->get();
     } elseif ($pays != '' && $categorie != '' && $recherche == '') {
-      $resultat = DB::table('specs')
-        ->join('pays', 'pays.id', '=', 'specs.pays_id')
-        ->join('categories', 'categories.id', '=', 'specs.categorie_id')
-        ->where('specs.categorie_id', '=', $categorie)
-        ->where('specs.pays_id', '=', $pays)
-        ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays')->orderby('specs.libelle', 'asc')->get();
+      $resultat = $baseQuery->where('specs.categorie_id', '=', $categorie)
+                           ->where('specs.pays_id', '=', $pays)
+                           ->orderby('specs.libelle', 'asc')->get();
     } elseif ($pays != '' && $categorie != '' && $recherche != '') {
-      $resultat = DB::table('specs')
-        ->join('pays', 'pays.id', '=', 'specs.pays_id')
-        ->join('categories', 'categories.id', '=', 'specs.categorie_id')
-        ->where('specs.categorie_id', '=', $categorie)
-        ->where('specs.pays_id', '=', $pays)
-        ->where('specs.libelle', 'like', '%' . $recherche . '%')
-        ->select('specs.*', 'categories.nom_categorie', 'pays.nom_pays')->orderby('specs.libelle', 'asc')->get();
+      $resultat = $baseQuery->where('specs.categorie_id', '=', $categorie)
+                           ->where('specs.pays_id', '=', $pays)
+                           ->where('specs.libelle', 'like', '%' . $recherche . '%')
+                           ->orderby('specs.libelle', 'asc')->get();
     } else {
+      // Aucun filtre : retourner toutes les spécifications admin publiées
+      $resultat = $baseQuery->orderby('specs.libelle', 'asc')->get();
     }
 
     return response()->json(
       [
         "status" => "success",
         "donnes" => $resultat
-
       ]
     );
   }

@@ -361,7 +361,7 @@ Route::get('ajaxbonnement/{libelle}', 'AbonnementController@ajaxbonnement')->nam
 Route::get('listspec', 'FrontController@listspec');
 
 
-Route::post('filtrerspec', 'SpecController@filtrerspec')->name('filtrerspec');
+Route::post('filtrerspec', 'SpecController@filtrerspec')->name('filtrerspec')->middleware('spec.access');
 
 
 Route::group(['middleware' => ['auth', 'role:admin']], function () {
@@ -503,7 +503,7 @@ Route::group(['middleware' => ['auth', 'role:user']], function () {
     Route::get('view/selectoperateur', 'FrontController@selectoperateur')->name('selectoperateur');
     Route::get('view/selectoperateur', 'FrontController@selectoperateur')->name('selectoperateur');
     Route::get('/recherche-offre', 'RechercheController@recherche')->name('recherche');
-    Route::get('listspecabonne', 'FrontController@listspecabonne')->name('listspecabonne');
+    Route::get('listspecabonne', 'FrontController@listspecabonne')->name('listspecabonne')->middleware('spec.access');
     Route::get('my-souscription', 'HomeController@mySouscription')->name('my-souscription');
     Route::post('souscription/add-user', 'HomeController@addUserSouscription')->name('add_user_souscription');
     Route::get('souscription/delete-user/{id}', 'HomeController@deleteUserSouscription')->name('delete_user_souscription');
@@ -516,4 +516,28 @@ Route::group(['middleware' => ['auth', 'role:user']], function () {
     })->name('welcome_abonne');
 
     Route::get('/Souscription/valide/{souscription}', 'AbonnementController@valider_souscription')->name('valider_souscription');
+});
+
+Route::post('/profil/update', 'FrontController@updateProfil')->name('profil.update')->middleware('auth');
+
+// Routes d'autocomplétion
+Route::get('/autocomplete/offres', 'RechercheController@autocompleteOffres')->name('autocomplete.offres');
+Route::get('/autocomplete/operateurs', 'RechercheController@autocompleteOperateurs')->name('autocomplete.operateurs');
+Route::get('/autocomplete/autorites', 'RechercheController@autocompleteAutorites')->name('autocomplete.autorites');
+Route::get('/autocomplete/references', 'RechercheController@autocompleteReferences')->name('autocomplete.references');
+
+// Gestion d'équipe
+Route::middleware(['auth'])->group(function () {
+    Route::get('teams', 'TeamController@index')->name('teams.index');
+    Route::get('teams/create', 'TeamController@create')->name('teams.create');
+    Route::post('teams', 'TeamController@store')->name('teams.store');
+    Route::get('teams/{id}', 'TeamController@show')->name('teams.show');
+    Route::get('teams/switch/{id}', 'TeamController@switchTeam')->name('teams.switch');
+    Route::get('teams/personal', 'TeamController@switchToPersonal')->name('teams.personal');
+    Route::delete('teams/{id}/remove', 'TeamController@removeMember')->name('teams.remove-member');
+    Route::put('teams/{id}', 'TeamController@update')->name('teams.update');
+
+    // Configuration du compte pour utilisateur temporaire
+    Route::get('teams/configure-account/{token}', 'TeamController@configureAccount')->name('teams.configure-account');
+    Route::post('teams/configure-account/{token}', 'TeamController@saveAccountConfiguration')->name('teams.save-account-configuration');
 });

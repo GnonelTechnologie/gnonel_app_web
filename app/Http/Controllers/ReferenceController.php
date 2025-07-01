@@ -11,28 +11,37 @@ class ReferenceController extends Controller
 {
     public function view()
     {
-
         User::admin(Auth::user());
         $operateurs = DB::table('operateurs')
             ->join('pays', 'pays.id', '=', 'operateurs.id_pays')
             ->select('operateurs.*', 'pays.nom_pays')->orderby('operateurs.raison_social', 'ASC')
             ->get();
 
-        $references = DB::table('references')
-            ->join('operateurs', 'operateurs.id', '=', 'references.operateur')
-            ->join('pays', 'pays.id', '=', 'operateurs.id_pays')
-            ->join('autoritecontractantes', 'autoritecontractantes.id', '=', 'references.autorite_contractante')
-            ->join('pays as p', 'p.id', '=', 'autoritecontractantes.id_pays')
-            ->join('categories', 'categories.id', '=', 'references.type_marche')
-            ->select('references.*', 'autoritecontractantes.raison_social as autorite_contractante', 'operateurs.raison_social as operateur', 'nom_categorie', 'p.nom_pays as paysop', 'pays.nom_pays as paysau')->orderby('references.created_at', 'desc')
-            ->paginate(200);
+        $teamId = session('active_team_id');
+        if ($teamId) {
+            $references = DB::table('references')
+                ->where('team_id', $teamId)
+                ->join('operateurs', 'operateurs.id', '=', 'references.operateur')
+                ->join('pays', 'pays.id', '=', 'operateurs.id_pays')
+                ->join('autoritecontractantes', 'autoritecontractantes.id', '=', 'references.autorite_contractante')
+                ->join('pays as p', 'p.id', '=', 'autoritecontractantes.id_pays')
+                ->join('categories', 'categories.id', '=', 'references.type_marche')
+                ->select('references.*', 'autoritecontractantes.raison_social as autorite_contractante', 'operateurs.raison_social as operateur', 'nom_categorie', 'p.nom_pays as paysop', 'pays.nom_pays as paysau')->orderby('references.created_at', 'desc')
+                ->paginate(200);
+        } else {
+            $references = DB::table('references')
+                ->where('compte', Auth::user()->email)
+                ->join('operateurs', 'operateurs.id', '=', 'references.operateur')
+                ->join('pays', 'pays.id', '=', 'operateurs.id_pays')
+                ->join('autoritecontractantes', 'autoritecontractantes.id', '=', 'references.autorite_contractante')
+                ->join('pays as p', 'p.id', '=', 'autoritecontractantes.id_pays')
+                ->join('categories', 'categories.id', '=', 'references.type_marche')
+                ->select('references.*', 'autoritecontractantes.raison_social as autorite_contractante', 'operateurs.raison_social as operateur', 'nom_categorie', 'p.nom_pays as paysop', 'pays.nom_pays as paysau')->orderby('references.created_at', 'desc')
+                ->paginate(200);
+        }
 
         $categories = DB::table('categories')->orderby('code_categorie', 'asc')->get();
-
         $pays = DB::table('pays')->orderby('nom_pays')->get();
-
-
-        // dd('ok reference');
         return view('liste_reference', compact('pays', 'operateurs', 'categories', 'references'));
     }
 
@@ -82,7 +91,7 @@ class ReferenceController extends Controller
             $image->move($destinationPath, $preuve_execution);
         }*/
 
-
+        $teamId = session('active_team_id');
         $add = DB::table('references')->insert([
             'reference_marche' => $data['reference'],
             'numeroreference' => User::genereId(),
@@ -98,6 +107,7 @@ class ReferenceController extends Controller
             'compte' => $data['compte'],
             'groupement' => $data['groupement'],
             'status' => 0,
+            'team_id' => $teamId,
             'created_at' => NOW(),
             'updated_at' => NOW(),
         ]);
@@ -156,6 +166,7 @@ class ReferenceController extends Controller
             $image->move($destinationPath, $preuve_execution);
         }*/
 
+        $teamId = session('active_team_id');
         if ($request->file('preuve_execution') == null) {
             $add = DB::table('references')
                 ->where('idreference', $id)
@@ -172,6 +183,7 @@ class ReferenceController extends Controller
                     'compte' => $data['compte'],
                     'groupement' => $data['groupement'],
                     'status' => 0,
+                    'team_id' => $teamId,
                     'created_at' => NOW(),
                     'updated_at' => NOW(),
                 ]);
@@ -192,6 +204,7 @@ class ReferenceController extends Controller
                     'compte' => $data['compte'],
                     'groupement' => $data['groupement'],
                     'status' => 0,
+                    'team_id' => $teamId,
                     'created_at' => NOW(),
                     'updated_at' => NOW(),
                 ]);
